@@ -1,0 +1,58 @@
+---
+title: "5.1 A tidy forecasting workflow"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+library(fpp3)
+```
+
+
+```{r}
+gdppc <- global_economy %>%
+  mutate(GDP_per_capita = GDP / Population)
+```
+
+```{r, fig.height=3, fig.width=4}
+gdppc %>% 
+  filter(Country == "Sweden") %>%
+  autoplot(GDP_per_capita) +
+  labs(y = "$US", title = "GDP per capita for Sweden")
+
+```
+#### Train the model (estimate)
+
+```{r}
+fit <- gdppc %>%
+  model(trend_model = TSLM(GDP_per_capita ~ trend()))
+
+```
+
+```{r}
+fit
+
+```
+
+#### Produce forecasts
+
+```{r}
+fit %>% forecast(h = "3 years")
+```
+
+
+```{r}
+fit %>%
+  forecast(h = "10 years") %>%
+  filter(Country == "Sweden") %>%
+  autoplot(gdppc) +
+  labs(y = "$US", title = "GDP per capita for Sweden")
+
+```
+

@@ -1,0 +1,176 @@
+---
+title: "5.2 Some simple forecasting methods"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+library(fpp3)
+```
+
+```{r}
+bricks <- aus_production %>%
+  filter_index("1970 Q1" ~ "2004 Q4") %>%
+  select(Bricks)
+```
+
+
+#### Mean method
+
+```{r}
+fit <- bricks %>% 
+  model(MEAN(Bricks))
+```
+
+```{r}
+fit %>% report()
+
+```
+```{r}
+bricks %>% 
+  autoplot(Bricks) + 
+  geom_line(data = fitted(fit), 
+            aes(Quarter, .fitted), 
+            linetype = "dashed", 
+            color = "blue")  + 
+  labs(title = "Clay brick production in Australia")
+
+```
+#### Naive Method
+
+```{r}
+fit_naive <- bricks %>% model(NAIVE(Bricks))
+report(fit_naive)
+```
+
+
+```{r}
+# plot the naive forecast for 10 quarters
+bricks %>% 
+  autoplot(Bricks) + 
+  geom_line(data = forecast(fit_naive, h = 10), 
+            aes(Quarter, .mean), 
+            color = "blue")  + 
+  labs(title = "Clay brick production in Australia")
+
+```
+#### Seasonal naive method
+
+```{r}
+fit_snaive <- bricks %>% model(SNAIVE(Bricks ~ lag("year")))
+report(fit_snaive)
+```
+
+
+```{r}
+# plot the seasonal naive forecast for 10 quarters
+bricks %>% 
+  autoplot(Bricks) + 
+  geom_line(data = forecast(fit_snaive, h = 10), 
+            aes(Quarter, .mean), 
+            color = "blue")  + 
+  labs(title = "Clay brick production in Australia")
+
+
+```
+
+#### Drift method
+
+```{r}
+fit_drift <- bricks %>%
+  model(RW(Bricks ~ drift()))
+
+report(fit_drift)
+
+```
+
+
+```{r}
+# plot the seasonal naive forecast for 10 quarters
+bricks %>% 
+  autoplot(Bricks) + 
+  geom_line(data = forecast(fit_drift, h = 10), 
+            aes(Quarter, .mean), 
+            color = "blue") +
+  labs(title = "Clay brick production in Australia")
+
+```
+
+
+#### Example: Australian quarterly beer production
+
+```{r}
+# Set training data from 1992 to 2006
+train <- aus_production %>%
+  filter_index("1992 Q1" ~ "2006 Q4")
+
+# Fit the models
+beer_fit <- train %>%
+  model(
+    Mean = MEAN(Beer),
+    `Naïve` = NAIVE(Beer),
+    `Seasonal naïve` = SNAIVE(Beer)
+  )
+
+# Generate forecasts for 14 quarters
+beer_fc <- beer_fit %>% forecast(h = 14)
+
+# Plot forecasts against actual values
+beer_fc %>%
+  autoplot(train, level = NULL) +
+  autolayer(
+    filter_index(aus_production, "2007 Q1" ~ .),
+    colour = "black"
+  ) +
+  labs(
+    y = "Megalitres",
+    title = "Forecasts for quarterly beer production"
+  ) +
+  guides(colour = guide_legend(title = "Forecast"))
+
+```
+
+
+#### Example: Google’s daily closing stock price
+
+```{r}
+# Re-index based on trading days
+google_stock <- gafa_stock %>%
+  filter(Symbol == "GOOG", year(Date) >= 2015) %>%
+  mutate(day = row_number()) %>%
+  update_tsibble(index = day, regular = TRUE)
+
+# Filter the year of interest
+google_2015 <- google_stock %>% filter(year(Date) == 2015)
+
+# Fit the models
+google_fit <- google_2015 %>%
+  model(
+    Mean = MEAN(Close),
+    `Naïve` = NAIVE(Close),
+    Drift = NAIVE(Close ~ drift())
+  )
+
+# Produce forecasts for the trading days in January 2016
+google_jan_2016 <- google_stock %>%
+  filter(yearmonth(Date) == yearmonth("2016 Jan"))
+
+google_fc <- google_fit %>%
+  forecast(new_data = google_jan_2016)
+
+# Plot the forecasts
+google_fc %>%
+  autoplot(google_2015, level = NULL) +
+  autolayer(google_jan_2016, Close, colour = "black") +
+  labs(y = "$US",
+       title = "Google daily closing stock prices",
+       subtitle = "(Jan 2015 - Jan 2016)") +
+  guides(colour = guide_legend(title = "Forecast"))
+```
+

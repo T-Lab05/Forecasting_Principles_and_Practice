@@ -1,0 +1,104 @@
+---
+title: "5.4 Residual diagnostics"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fpp3)
+```
+
+#### Example: Forecasting Google daily closing stock prices
+
+```{r}
+# Re-index based on trading days
+google_stock <- gafa_stock %>%
+  filter(Symbol == "GOOG", year(Date) >= 2015) %>%
+  mutate(day = row_number()) %>%
+  update_tsibble(index = day, regular = TRUE)
+
+# Filter the year of interest
+google_2015 <- google_stock %>% filter(year(Date) == 2015)
+```
+
+
+
+```{r}
+autoplot(google_2015, Close) +
+  labs(y = "$US",
+       title = "Google daily closing stock prices in 2015")
+
+```
+
+```{r}
+aug <- google_2015 %>%
+  model(NAIVE(Close)) %>%
+  augment()
+
+autoplot(aug, .innov) +
+  labs(y = "$US",
+       title = "Residuals form the naive method")
+
+```
+
+
+```{r}
+aug %>%
+  ggplot(aes(x = .innov)) +
+  geom_histogram() +
+  labs(title = "Histogram of residuals")
+
+```
+
+
+```{r}
+aug %>%
+  ACF(.innov) %>%
+  autoplot() +
+  labs(title = "Residulas from the naive method")
+
+```
+
+
+```{r}
+google_2015 %>%
+  model(NAIVE(Close)) %>%
+  gg_tsresiduals()
+```
+
+#### Portmanteau tests for autocorrelation
+
+```{r}
+aug %>% features(.innov, box_pierce, lag = 10, dof = 0)
+
+```
+bp_stat is not significant. 
+Therefore, the hypothesis that the residual series is white noise does not rejected.
+
+```{r}
+aug %>% features(.innov, ljung_box, lag = 10, dof = 0)
+
+```
+bp_stat is not significant. 
+Therefore, the hypothesis that the residual series is white noise does not rejected.
+
+
+#### Portmanteau tests for the drift model
+
+```{r}
+fit <- google_2015 %>% model(RW(Close ~ drift()))
+tidy(fit)
+```
+
+
+```{r}
+augment(fit) %>% features(.innov, ljung_box, lag=10, dof=1)
+
+```
+bp_stat is not significant. 
+Therefore, the hypothesis that the residual series is white noise does not rejected.
+

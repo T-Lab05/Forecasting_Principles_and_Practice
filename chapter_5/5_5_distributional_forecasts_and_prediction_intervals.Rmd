@@ -1,0 +1,97 @@
+---
+title: "5.5 Distributional forecasts and prediction intervals"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fpp3)
+```
+
+```{r}
+# Re-index based on trading days
+google_stock <- gafa_stock %>%
+  filter(Symbol == "GOOG", year(Date) >= 2015) %>%
+  mutate(day = row_number()) %>%
+  update_tsibble(index = day, regular = TRUE)
+
+# Filter the year of interest
+google_2015 <- google_stock %>% filter(year(Date) == 2015)
+```
+
+
+#### Prediction intervals
+
+95% prediction interval for h-step forecast
+$$
+\hat{y}_{T+h|T}  \pm 1.96 \hat{\sigma}_h 
+$$
+where $\hat{\sigma}$ is an estimate of the standard deviation of the h-step forecast.
+
+#### One-step prediction intervals
+
+$$
+\hat{\sigma} = \sqrt{\frac{1}{T - K}\sum_{i=1}^ne_t^2}
+$$
+where K is the number of parameters estimated in the model.
+
+
+#### Multi-step prediction intervals
+
+#### Benchmark method
+
+```{r}
+google_2015 %>%
+  model(NAIVE(Close)) %>%
+  forecast(h = 10) %>%
+  hilo()
+
+```
+
+
+```{r}
+google_2015 %>%
+  model(NAIVE(Close)) %>%
+  forecast(h = 10) %>%
+  autoplot(google_2015) +
+  labs(title="Google daily closing stock price", y="$US" )
+```
+#### Prediction intervals from bootstrapped residuals
+
+```{r}
+fit <- google_2015 %>%
+  model(NAIVE(Close))
+
+sim <- fit %>% 
+  generate(h = 30, times = 5, bootstrap = TRUE)
+
+sim
+```
+
+
+```{r}
+google_2015 %>%
+  ggplot(aes(x = day)) +
+  geom_line(aes(y = Close)) +
+  geom_line(aes(y = .sim, colour = as.factor(.rep)),
+    data = sim) +
+  labs(title="Google daily closing stock price", y="$US" ) +
+  guides(colour = "none")
+
+```
+
+
+```{r}
+fc <- fit %>% forecast(h = 30, bootstrap = TRUE)
+autoplot(fc, google_2015) +
+  labs(title="Google daily closing stock price", y="$US" )
+```
+
+
+```{r}
+```
+

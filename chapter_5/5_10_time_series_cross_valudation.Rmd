@@ -1,0 +1,61 @@
+---
+title: "5.10 time-series cross-validation"
+output: html_document
+date: '2022-04-07'
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fpp3)
+```
+
+
+```{r}
+head(google_2015, 20)
+
+```
+
+
+```{r}
+# Prepare training set for cross-validation
+google_2015_tr <- google_2015 %>%
+  stretch_tsibble(.init = 3, .step = 1) %>%
+  relocate(Date, Symbol, .id)
+head(google_2015_tr, 20)
+```
+```{r, warning=FALSE}
+# time-series cross-validation accuracy
+google_2015_tr %>%
+  model(RW(Close ~ drift())) %>%
+  forecast(h = 1) %>%
+  accuracy(google_2015)
+
+# Training set accuracy
+google_2015 %>%
+  model(RW(Close ~ drift())) %>%
+  accuracy()
+```
+
+#### Example: Forecast horizon accuracy with cross-validation
+
+```{r, warning=FALSE}
+google_2015_tr <- google_2015 %>%
+  stretch_tsibble(.init = 3, .step = 1)
+
+fc <- google_2015_tr %>%
+  model(RW(Close ~ drift())) %>%
+  forecast(h = 8) %>%
+  group_by(.id) %>%
+  mutate(h = row_number()) %>%
+  ungroup() %>%
+  as_fable(response = "Close", distribution = Close)
+
+fc %>%
+  accuracy(google_2015, by = c("h", ".model")) %>%
+  ggplot(aes(x = h, y = RMSE)) +
+  geom_point()
+```

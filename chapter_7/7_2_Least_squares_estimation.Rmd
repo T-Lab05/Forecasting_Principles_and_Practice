@@ -1,0 +1,76 @@
+---
+title: "7.2 Least square estimation"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fpp3)
+```
+
+- Choose the coefficients by minimising the sum of squared erros
+$$
+\sum_{t=1}^T\varepsilon_t^2 = \sum_{t=1}^T(y_t-\beta_0-\beta_{x_1,t}-\beta_{x_2,t} - \cdots - \beta_{x_k,t})
+$$
+
+
+#### Example: US consumption expenditure
+
+```{r}
+fit_consMR <- us_change %>%
+  model(tslm = TSLM(Consumption ~ Income + Production +
+                                    Unemployment + Savings))
+report(fit_consMR)
+
+```
+#### Fitted values
+
+```{r}
+augment(fit_consMR) %>%
+  ggplot(aes(x = Quarter)) +
+  geom_line(aes(y = Consumption, colour = "Data")) +
+  geom_line(aes(y = .fitted, colour = "Fitted")) +
+  labs(y = NULL,
+    title = "Percent change in US consumption expenditure"
+  ) +
+  scale_colour_manual(values=c(Data="black",Fitted="#D55E00")) +
+  guides(colour = guide_legend(title = NULL))
+
+```
+
+
+```{r}
+augment(fit_consMR) %>%
+  ggplot(aes(x = Consumption, y = .fitted)) +
+  geom_point() +
+  labs(
+    y = "Fitted (predicted values)",
+    x = "Data (actual values)",
+    title = "Percent change in US consumption expenditure"
+  ) +
+  geom_abline(intercept = 0, slope = 1)
+```
+
+
+#### Goodness-of-fit
+
+R squared
+$$
+R^2 = \frac{\sum\hat{y}_t-\bar{y}^2}{\sum(y_t - \bar{y})^2}
+$$
+#### Example: US consumption expenditure
+
+#### Standard error of the regression
+
+- Residual Standar Error
+  - $k$ is the number of predictors in the model
+  - divide by (T-k-1) because we estimate k+1 parameters(the intercept + the coefficients of each predictors)
+  
+$$
+\hat{\sigma}_e = \sqrt{ \frac{1}{T-k-1} \sum_{t=1}^{T}{e_t^2}}
+$$
+

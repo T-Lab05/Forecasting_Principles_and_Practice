@@ -1,0 +1,96 @@
+---
+title: "5.9 Evaluating distribution forecast accuracy"
+output: html_document
+date: '2022-04-07'
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+# Re-index based on trading days
+google_stock <- gafa_stock %>%
+  filter(Symbol == "GOOG", year(Date) >= 2015) %>%
+  mutate(day = row_number()) %>%
+  update_tsibble(index = day, regular = TRUE)
+# Filter the year of interest
+google_2015 <- google_stock %>% filter(year(Date) == 2015)
+# Fit the models
+google_fit <- google_2015 %>%
+  model(
+    Mean = MEAN(Close),
+    `Naïve` = NAIVE(Close),
+    Drift = NAIVE(Close ~ drift())
+  )
+# Produce forecasts for the trading days in January 2016
+google_jan_2016 <- google_stock %>%
+  filter(yearmonth(Date) == yearmonth("2016 Jan"))
+google_fc <- google_fit %>%
+  forecast(new_data = google_jan_2016)
+```
+
+
+#### Quantile scores
+
+$$
+Q_{p,t} = \left\{\begin{array} {}
+\displaystyle 2(1-p)(f_{p,t} - y_t), if\,\, y_t < f_{p,t} \\
+2p(y_t - f_{p,t}), if y_t >= f_{p,t}
+\end{array}\right.
+$$
+- the error $(y_t - f_{p,t})$
+- If $y_t > f_{p,t} $, "$Q_{p,t}$ gives a heavier penalty when the observation is greater than the estimated quantile than when the observation is less than the estimated quantile. The reverse is true for"  
+
+
+```{r}
+google_fc %>%
+  filter(.model == "Naïve") %>%
+  autoplot(bind_rows(google_2015, google_jan_2016), level=80)+
+  labs(y = "$US",
+       title = "Google closing stock prices")
+```
+
+
+```{r}
+google_fc %>%
+  filter(.model == "Naïve", Date == "2016-01-04") %>%
+  accuracy(google_stock, list(qs=quantile_score), probs=0.10)
+```
+#### Winkler Score
+
+$$
+W_{\alpha,t} = \left\{\begin{array}{}
+\displaystyle 
+(u_{\alpha,t} - l_{\alpha, t}) + \frac{2}{\alpha}(l_{\alpha,t} - y_t) \;\;\;\;\; if \;\; y_t < l_{\alpha,t} \\
+
+(u_{\alpha,t} - l_{\alpha, t}) 
+\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\; if \;\; y_t \leq l_{\alpha,t} \leq u_{\alpha,t}\\
+
+(u_{\alpha,t} - l_{\alpha, t}) + \frac{2}{\alpha}(y_t - u_{\alpha,t}) \;\;\;\;\; if \;\; y_t < l_{\alpha,t}
+
+
+\end{array}\right.
+$$
+- $ 100(1 - \alpha) \% $ prediction interval at time $t$ is given by $ [l_{\alpha,t}, u_{\alpha, t}] $ 
+
+- low scores are associated the narrow prediction intervals
+- if the observation falls outside the interval, the penalty applies proportional to how far it outside the interval.
+
+
+```{r}
+google_fc %>%
+  filter(.model == "Naïve", Date == "2016-01-04") %>%
+  accuracy(google_stock, list(winkler = winkler_score), level = 80)
+```
+
+#### Scale-free comparisons using skill scores
+
+```{r}
+google_fc %>%
+  accuracy(google_stock, list(skill = skill_score(CRPS)))
+
+```
+

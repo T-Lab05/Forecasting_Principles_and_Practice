@@ -147,6 +147,7 @@ beer_fc %>%
 ```{r}
 accuracy(beer_fc, recent_production)
 ```
+<<<<<<< HEAD
 ```{r}
 # Re-index based on trading days
 google_stock <- gafa_stock %>%
@@ -189,6 +190,3 @@ google_fc %>%
   guides(colour = guide_legend(title = "Forecast"))
 
 ```
-
-
-=======

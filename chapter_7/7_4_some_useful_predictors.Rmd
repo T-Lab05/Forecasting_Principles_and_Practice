@@ -1,0 +1,114 @@
+---
+title: "7.4 Some useful predictors"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fpp3)
+```
+
+#### Trend
+
+$$
+y_t = \beta_0 + \beta t + \varepsilon_T \\ 
+\rm{where} \;\;\;t = 1, \dots,T
+$$
+
+#### Dummy variable
+(no code)
+
+#### Seasonal dummy variables
+- Dummy variables associating seasonal effect of time-series
+- ex) daily observations and weekly seasonal effect
+    - => six dummy variable (7 weekday - 1 )
+
+#### Example: Australian quarterly beer production
+
+```{r}
+recent_production <- aus_production %>%
+  filter(year(Quarter) >= 1992)
+recent_production %>%
+  autoplot(Beer) +
+  labs(y = "Megalitres",
+       title = "Australian quarterly beer production")
+```
+- Regression model with a linear trend and quarterly dummy variables
+
+$$
+y_t = \beta_0 + \beta_{1}t + \beta_{2}d_{2,t} + \beta_{3}d_{3,t}+ \beta_{4}d_{4,t} + \varepsilon_t \\
+\rm{where}\;\;\;d_{i,t} = 1 \;\; \rm{if} \;\; t \;\rm{is \;in\; quarter\; i\; and\; 0\; otherwise} 
+$$
+
+```{r}
+fit_beer <- recent_production %>%
+  model(TSLM(Beer ~ trend() + season()))
+
+report(fit_beer)
+```
+```{r}
+augment(fit_beer) %>%
+  ggplot(aes(x = Quarter)) +
+  geom_line(aes(y = Beer, colour = "Data")) +
+  geom_line(aes(y = .fitted, colour = "Fitted")) +
+  scale_colour_manual(
+    values = c(Data = "black", Fitted = "#D55E00")
+  ) +
+  labs(y = "Megalitres",
+       title = "Australian quarterly beer production",
+       subtitle = "Time plot of beer production and predicted beer production"
+       ) +
+  guides(colour = guide_legend(title = "Series"))
+```
+
+```{r}
+augment(fit_beer) %>%
+  ggplot(aes(x = Beer, y = .fitted,
+             colour = factor(quarter(Quarter)))) +
+  geom_point() +
+  labs(y = "Fitted", x = "Actual values",
+       title = "Australian quarterly beer production",
+       subtitle = "Actual beer production plotted against predicted beer production") +
+  geom_abline(intercept = 0, slope = 1) +
+  guides(colour = guide_legend(title = "Quarter"))
+```
+
+#### Intervention variables
+- Intervention
+  - ex)
+    - competitor activity
+    - advertising expenditure
+    - industrial action
+- If the effect lasts one period, use "spike" variable
+  - "spike" variable takes 1 at the intervention and 0 otherwise
+- If the effect is immediate and permanent effect, it causes a level shift.Use "step" variable.
+  - "step" variable takes 0 before the intervention and 1 from the intervention.
+- Another form of permanent effect is a change of slope. A trend that bends at the time of intervention and hence is non linear.
+
+
+#### Trading days
+- The number of trading days in a month can have a substantial effect on sales data.
+
+
+#### Distributed lags
+- The effect of advertising last beyond the actual campaign.
+- Include lagged values of advertising expenditure.
+
+
+#### Easter
+
+#### Fourier series
+- Alternative to using seasonal dummy variable
+- Need fewer predictors than with dummy variable
+
+```{r}
+fourier_beer <- recent_production %>%
+  model(TSLM(Beer ~ trend() + fourier(K = 2)))
+
+report(fourier_beer)
+
+```

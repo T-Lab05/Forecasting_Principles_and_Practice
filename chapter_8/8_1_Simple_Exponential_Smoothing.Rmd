@@ -1,0 +1,96 @@
+---
+title: "8.1 Simple exponential smoothing"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fpp3)
+```
+
+-   Simple Exponential Smoothing (SES)
+    -   Suitable for data with no clear trend and seasonal pattern.
+    -   The smoothing parameter: alpha
+    -   When alpha is small, more weight on observations from the more distant part.
+    -   When alpha is large, more weight on the more recent observations.
+
+$$ 
+\hat{y}_{T+1|T} = \alpha y_T + \alpha(1-\alpha) y{T-1} \alpha(1-\alpha)^2 y_{T-2} + \dots, 
+\\ \text{where $0\le \alpha \le 1$}
+$$
+
+```{r}
+algeria_economy <- global_economy %>%
+  filter(Country == "Algeria")
+algeria_economy %>%
+  autoplot(Exports) +
+  labs(y = "% of GDP", title = "Exports: Algeria")
+```
+
+#### Weighted average form
+
+The forrecast at time T +1 is equal to a weighted average between the recent observation \$y_T\$ and the previous forecast \$\\hat{y}\_{T\|T-1}\$:
+
+$$
+\hat{y}_{T+1 | T} = \alpha y_T + (1 - \alpha)\hat{y}_{T|T-1} \\
+\text{for $ t = 1, \dots T $}
+$$
+
+As for \$ \\hat{y}\_{2\|1} \$
+
+$$
+\hat{y}_{2|1} = \alpha y_1 + (1 - \alpha)l_0 \\
+\text{$l_0$ is the first fitted value, which have to estimate.}
+$$
+
+Weighted average form:
+
+$$
+\hat{y}_{T+1|T} = \sum_{j=0}^{T-1}{\alpha(1-\alpha)^jy_{T-j}} +(1-\alpha)^Tl_0
+$$
+
+#### Component form
+
+$$
+\text{Forecast equation} \;\; \hat{y}_{t+h|t} = l_t \\
+\text{Smoothing equation} \;\; l_t = \alpha y_t + (1-\alpha)l_{t-1} \\
+\text{where $l_t$ is the level (or the smoothed value)}
+$$
+
+#### Flat forecasts
+
+-   All forecasts take the same value, equal to the last level component
+
+$$
+\hat{y}_{T+h|T} = \hat{y}_{T+1|T} = l_T\\
+h = 2,3, \dots
+$$
+
+#### Optimization
+
+-   Choose \$\\alpha\$ so that minimize SSE
+
+### Example: Algerian exports
+
+```{r}
+# Estimate parameters
+fit <- algeria_economy %>%
+  model(ETS(Exports ~ error("A") + trend("N") + season("N")))
+
+fc <- fit %>%
+  forecast(h = 5)
+
+fc %>%
+  autoplot(algeria_economy) +
+  geom_line(aes(y = .fitted), col="#D55E00",
+            data = augment(fit)) +
+  labs(y="% of GDP", 
+       title="Exports: Algeria",
+       subtitle="Simple exponential smoothing applied"
+       ) +
+  guides(colour = "none")
+```

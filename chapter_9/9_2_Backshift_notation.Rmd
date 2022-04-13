@@ -1,0 +1,76 @@
+---
+title: "9.5 Non-seasonal ARIMA models"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fpp3)
+```
+
+ARIMA(p, d, q) model
+
+$$
+y'_t = c + \phi_1 y'_{t-1}+ \dots+ \phi_py'_{t-p} + \theta1\varepsilon_{t-1}+ \dots+\theta_q\varepsilon_{t-q} + \varepsilon_t
+$$
+
+#### Example: Egyptian exports
+
+```{r}
+global_economy %>%
+  filter(Code == "EGY") %>%
+  autoplot(Exports) +
+  labs(y = "% of GDP", title = "Egyptian exports")
+```
+
+```{r}
+fit <- global_economy %>%
+  filter(Code == "EGY") %>%
+  model(ARIMA(Exports))
+
+report(fit)
+```
+
+```{r}
+fit %>% forecast(h=10) %>%
+  autoplot(global_economy) +
+  labs(y = "% of GDP", title = "Egyptian exports")
+```
+
+#### Understanding ARIMA models
+
+#### ACF and PACF plots
+
+```{r}
+global_economy %>%
+  filter(Code == "EGY") %>%
+  ACF(Exports) %>%
+  autoplot()
+```
+
+```{r}
+global_economy %>%
+  filter(Code == "EGY") %>%
+  PACF(Exports) %>%
+  autoplot()
+```
+
+```{r}
+fit2 <- global_economy %>%
+  filter(Code == "EGY") %>%
+  model(ARIMA(Exports ~ pdq(4,0,0)))
+
+report(fit2)
+```
+
+```{r}
+fit2 <- global_economy %>%
+  filter(Code == "EGY") %>%
+  model(ARIMA(Exports ~ pdq(p=1:3, d=1:2, q=0:2)))
+
+report(fit2)
+```

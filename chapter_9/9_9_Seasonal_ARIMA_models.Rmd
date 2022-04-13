@@ -1,0 +1,126 @@
+---
+title: "9.9 Seasonal ARIMA models"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fpp3)
+```
+
+-   ARIMA(p,d,q)(P,D,Q)m
+
+-   ex) ARIMA(1,1,1)(1,1,1)4
+
+$$ 
+(1-\phi_1B)(1-\Phi_1B^4)(1-B)(1-B^4)y_t = (1+\theta_1B)(1+\Theta_1B^4)\varepsilon_t
+$$
+
+#### ACF/PACF
+
+#### Example: Monthly US leisure and hospitality employment
+
+```{r}
+leisure <- us_employment %>%
+  filter(Title == "Leisure and Hospitality",
+         year(Month) > 2000) %>%
+  mutate(Employed = Employed/1000) %>%
+  select(Month, Employed)
+
+autoplot(leisure, Employed) +
+  labs(title = "US employment: leisure and hospitality",
+       y="Number of people (millions)")
+
+```
+
+```{r}
+# Take the seasonal difference 
+leisure %>%
+  gg_tsdisplay(difference(Employed, 12),
+               plot_type='partial', lag=36) +
+  labs(title="Seasonally differenced", y="")
+```
+
+```{r}
+# Again, take the difference to de-trend
+leisure %>%
+  gg_tsdisplay(difference(Employed, 12) %>% difference(),
+               plot_type='partial', lag=36) +
+  labs(title = "Double differenced", y="")
+```
+
+```{r}
+fit <- leisure %>%
+  model(
+    arima012011 = ARIMA(Employed ~ pdq(0,1,2) + PDQ(0,1,1)),
+    arima210011 = ARIMA(Employed ~ pdq(2,1,0) + PDQ(0,1,1)),
+    auto = ARIMA(Employed, stepwise = FALSE, approx = FALSE)
+  )
+
+fit %>% pivot_longer(everything(), names_to = "Model name",
+                     values_to = "Orders")
+```
+
+```{r}
+fit %>% select(auto) %>% gg_tsresiduals(lag=36)
+```
+
+```{r}
+augment(fit) %>%
+  filter(.model == "auto") %>%
+  features(.innov, ljung_box, lag=24, dof=4)
+```
+
+```{r}
+forecast(fit, h=36) %>%
+  filter(.model=='auto') %>%
+  autoplot(leisure) +
+  labs(title = "US employment: leisure and hospitality",
+       y="Number of people (millions)")
+```
+
+#### Example: Corticosteroid drug sales in Australia
+
+```{r}
+h02 <- PBS %>%
+  filter(ATC2 == "H02") %>%
+  summarise(Cost = sum(Cost)/1e6)
+
+h02 %>%
+  mutate(log(Cost)) %>%
+  pivot_longer(-Month) %>%
+  ggplot(aes(x = Month, y = value)) +
+  geom_line() +
+  facet_grid(name ~ ., scales = "free_y") +
+  labs(y="", title="Corticosteroid drug scripts (H02)")
+```
+
+```{r}
+h02 %>% gg_tsdisplay(difference(log(Cost), 12),
+                     plot_type='partial', lag_max = 24)
+```
+
+```{r}
+fit <- h02 %>%
+  model(ARIMA(log(Cost) ~ 0 + pdq(3,0,1) + PDQ(0,1,2)))
+
+fit %>% gg_tsresiduals(lag_max=36)
+```
+
+```{r}
+augment(fit) %>%
+  features(.innov, ljung_box, lag = 36, dof = 6)
+```
+
+```{r}
+h02 %>%
+  model(ARIMA(log(Cost) ~ 0 + pdq(3,0,1) + PDQ(0,1,2))) %>%
+  forecast() %>%
+  autoplot(h02) +
+  labs(y=" $AU (millions)",
+       title="Corticosteroid drug scripts (H02) sales")
+```

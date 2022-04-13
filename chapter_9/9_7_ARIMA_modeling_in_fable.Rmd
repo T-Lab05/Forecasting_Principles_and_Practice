@@ -1,0 +1,73 @@
+---
+title: "9.7 ARIMA modeling in fable"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fpp3)
+```
+
+#### How does ARIMA work?
+
+#### Modeling procedure
+
+#### Example: Central African Republic exports
+
+```{r}
+global_economy %>%
+  filter(Code == "CAF") %>%
+  autoplot(Exports) +
+  labs(title="Central African Republic exports",
+       y="% of GDP")
+
+```
+
+```{r, warning=F}
+global_economy %>%
+  filter(Code == "CAF") %>%
+  gg_tsdisplay(difference(Exports), plot_type='partial')
+```
+```{r}
+caf_fit <- global_economy %>%
+  filter(Code == "CAF") %>%
+  model(arima210 = ARIMA(Exports ~ pdq(2,1,0)),
+        arima013 = ARIMA(Exports ~ pdq(0,1,3)),
+        stepwise = ARIMA(Exports),
+        search = ARIMA(Exports, stepwise=FALSE))
+
+caf_fit %>% pivot_longer(!Country, names_to = "Model name",
+                         values_to = "Orders")
+
+glance(caf_fit) %>% arrange(AICc) %>% select(.model:BIC)
+
+```
+
+```{r}
+caf_fit %>%
+  select(search) %>%
+  gg_tsresiduals()
+```
+```{r}
+augment(caf_fit) %>%
+  filter(.model=='search') %>%
+  features(.innov, ljung_box, lag = 10, dof = 3)
+
+```
+```{r}
+caf_fit %>%
+  forecast(h=5) %>%
+  filter(.model=='search') %>%
+  autoplot(global_economy)
+```
+
+#### Plotting the characteristic roots
+
+```{r}
+gg_arma(caf_fit %>% select(Country, search))
+```
+

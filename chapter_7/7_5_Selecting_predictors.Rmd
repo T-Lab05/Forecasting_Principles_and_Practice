@@ -1,0 +1,64 @@
+---
+title: "7.5 Selecting predictors"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fpp3)
+```
+
+
+```{r}
+fit_consMR <- us_change %>%
+  model(tslm = TSLM(Consumption ~ Income + Production + Unemployment + Savings))
+
+glance(fit_consMR) %>%
+  select(adj_r_squared, CV, AIC, AICc, BIC)
+```
+
+#### Adkisted R2
+
+R-squared
+$$
+SSE = \sum_{t=1}^{T}e_t^2
+$$
+Adjusted R-squared
+$$
+\bar{R^2} = 1 -(1-R^2)\frac{T-1}{T-k-1}
+$$
+#### Cross-Validation
+
+#### Akaike's Information Criterion
+
+$$
+AIC = Tlog(\frac{SSE}{T}) + 2(k+2) \\
+\rm{where \;\; T \; is \; the \; number \; of\; observations}\\
+\rm{ k \; is \; the \; number \; of \; predictors}
+
+$$
+#### Corrected Akaike's Information Criterion
+$$
+AICc = AIC + \frac{2(k+2)(k+3)}{T-K-3}
+$$
+
+#### Shwarz's Baysian Information Criterion
+- BIC penalize the number of parameters more heavily than AIC
+
+$$
+BIC = T*log(\frac{SSE}{T}) + (k+2)*log(T)
+$$
+#### Example: US consumption
+
+#### Best subset regression
+
+#### Stepwise regression
+- backward stepwise regression
+- forward stepwise regression
+- hybrid stepiwise regression
+
+#### Beware of inference after selecting predictors

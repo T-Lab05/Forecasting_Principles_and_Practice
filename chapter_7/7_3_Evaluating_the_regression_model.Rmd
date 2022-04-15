@@ -1,0 +1,91 @@
+---
+title: "7.3 Evaluating the regression model"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fpp3)
+```
+
+- Properties of residuals
+  - The average of residual is zero
+  
+$$
+\sum_{t=1}^{T}e_t = 0 
+$$
+  - No correlation with any predictors
+
+$$
+\sum_{t=1}^{T}{x_{k,t}\,e_t} = 0 \;\; \forall k
+$$
+#### ACF plot of residuals
+
+#### Histgram of residuals
+
+```{r}
+fit_consMR <- us_change %>%
+  model(tslm = TSLM(Consumption ~ Income + Production +
+                                    Unemployment + Savings))
+
+fit_consMR %>% gg_tsresiduals()
+```
+- Heteroscedasticity in the innovation residual plot
+- Spike at lag 7 on ACF plot, but its ACF is not so strong
+- Right skewness on Histogram
+
+
+```{r}
+augment(fit_consMR) %>%
+  features(.innov, ljung_box, lag = 10, dof = 5)
+```
+
+#### Residual plots against predictors
+- Expect the residuals to be randomly scattered without any systematic pattern.
+- If there is a pattern, "the relationship may be nonlinear and the model will need to be modified accordingly"
+
+```{r}
+us_change %>%
+  left_join(residuals(fit_consMR), by = "Quarter") %>%
+  pivot_longer(Income:Unemployment,
+               names_to = "regressor", values_to = "x") %>%
+  ggplot(aes(x = x, y = .resid)) +
+  geom_point() +
+  facet_wrap(. ~ regressor, scales = "free_x") +
+  labs(y = "Residuals", x = "")
+```
+
+#### Residual plots against fitted values
+- Expect the residuals show no pattern
+- If there is a pattern, or heteroscedasticity, consider transformation of response variable such as logarithm and root transformation. 
+
+```{r}
+augment(fit_consMR) %>%
+  ggplot(aes(x = .fitted, y = .resid)) +
+  geom_point() + labs(x = "Fitted", y = "Residuals")
+```
+
+#### Outliers and influential observations
+
+#### Spurious regression
+- Two non-stationary time series
+  - ex) two series with upward trend
+- Regressing non-stationary time series can lead to spurious regressions.
+- "Spurious regression appears to be reasonable short-term forecast, but will generally not continue to work into the feature."
+
+```{r}
+# Regress air-passengers in Australia by rice production in Guinea 
+fit <- aus_airpassengers %>%
+  filter(Year <= 2011) %>%
+  left_join(guinea_rice, by = "Year") %>%
+  model(TSLM(Passengers ~ Production))
+
+report(fit)
+fit %>% gg_tsresiduals()
+```
+
+

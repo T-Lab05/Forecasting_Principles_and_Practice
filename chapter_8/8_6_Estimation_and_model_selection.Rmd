@@ -1,0 +1,38 @@
+---
+title: "8.6 Estimation and model selection"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fpp3)
+```
+
+```{r}
+aus_holidays <- tourism %>%
+  filter(Purpose == "Holiday") %>%
+  summarise(Trips = sum(Trips)/1e3)
+
+fit <- aus_holidays %>%
+  model(ETS(Trips))
+
+report(fit)
+```
+
+```{r}
+components(fit) %>%
+  autoplot() +
+  labs(title = "ETS(M,N,A) components")
+```
+
+```{r}
+augment(fit) %>%
+  pivot_longer(c(.resid, .innov)) %>%
+  autoplot(value) +
+  facet_grid(name~.)
+  
+```

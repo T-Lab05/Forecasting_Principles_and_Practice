@@ -1,0 +1,82 @@
+---
+title: "5.10 time-series cross-validation"
+output: html_document
+date: '2022-04-07'
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fpp3)
+```
+
+
+#### Simple linear regression
+
+$$
+y_t = \beta_0 + \beta_1x + \varepsilon_t
+$$
+
+
+#### Example: US consumption expenditure
+
+```{r}
+head(us_change)
+
+```
+
+```{r}
+us_change %>%
+  pivot_longer(c(Consumption, Income), names_to = "Series") %>%
+  autoplot(value) +
+  labs(y = "% change",
+       title = "Percentage changes in personal consumption\n expenditure and personal income for the US")
+
+```
+
+```{r}
+us_change %>%
+  ggplot(aes(x = Income, y = Consumption)) +
+  labs(y = "Consumption (quarterly % change)",
+       x = "Income (quarterly % change)") +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+```{r}
+us_change %>%
+  model(TSLM(Consumption ~ Income)) %>%
+  report()
+```
+
+
+#### Multiple linear regression
+
+$$
+y_t = \beta_0 + \beta_1x + \beta_2x + \cdots+ \beta_kx + \varepsilon_t
+$$
+#### Example: US consumption expenditure
+
+```{r}
+us_change %>%
+  select(-Consumption, -Income) %>%
+  pivot_longer(-Quarter) %>%
+  ggplot(aes(Quarter, value, colour = name)) +
+  geom_line() +
+  facet_grid(name ~ ., scales = "free_y") +
+  guides(colour = "none") +
+  labs(y="% change")
+```
+```{r}
+us_change %>%
+  GGally::ggpairs(columns = 2:6)
+```
+#### Assumptions
+
+Assumptions about errors($ \varepsilon_1,\cdots,\varepsilon_1$)
+- The mean of errors is zero. Otherwise the forecasts are systematically biased.
+- Errors are not autocorrelated. Otherwise, there is more information in the data that can be exploited. 
+- Errors are unrelated to the predictors. Otherwise, there would be more information that should be included in the systematic part of the model.
+- Errors follow a normal distribution with constant variance. Otherwise, the prediction interval will not be accurate.

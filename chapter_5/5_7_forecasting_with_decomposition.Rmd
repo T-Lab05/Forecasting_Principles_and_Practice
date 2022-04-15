@@ -1,0 +1,68 @@
+---
+title: "5.7 forecasting with decomposition"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#### Example: Employment in the US retail sector
+
+
+```{r}
+us_retail_employment <- us_employment %>%
+  filter(year(Month) >= 1990, Title == "Retail Trade")
+
+dcmp <- us_retail_employment %>%
+  model(STL(Employed ~ trend(window = 7), robust = TRUE)) %>%
+  components() %>%
+  select(-.model)
+
+head(dcmp)
+```
+
+
+```{r}
+dcmp %>%
+  model(NAIVE(season_adjust)) %>%
+  forecast() %>%
+  autoplot(dcmp) +
+  labs(y = "Number of people",
+       title = "US retail employment",
+       subtitle = "Naïve forecasts of the seasonally adjusted data")
+
+```
+
+
+```{r}
+fit_dcmp <- us_retail_employment %>%
+  model(stlf = decomposition_model(
+    STL(Employed ~ trend(window = 7), robust = TRUE),
+    NAIVE(season_adjust)
+  ))
+
+```
+
+```{r}
+forecast(fit_dcmp)
+```
+
+
+```{r}
+fit_dcmp %>%
+  forecast() %>%
+  autoplot(us_retail_employment)+
+  labs(y = "Number of people",
+       title = "US retail employment",
+       subtitle = "Naïve forecast of the seasonally adjusted data and\n a seasonal naïve forecast")
+```
+
+
+```{r}
+# Residual Analysis
+fit_dcmp %>% gg_tsresiduals()
+```
+The ACF of the residuals display significant autocorrelations.The naive method not capturing the changing trend in the seasonally adjusted series

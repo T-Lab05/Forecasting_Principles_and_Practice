@@ -1,0 +1,98 @@
+---
+title: "8.3 Methods with seasonality"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fpp3)
+```
+
+#### Holt-Winters' additive method
+
+$$
+\text{Forecast equation} \; \hat{y}_{t+h|t} = l_t + h b_t + s_{t+h-m(k+1)}\\
+\text{Level equation} \; l_t = \alpha(y_t - s_{t-m}) + (1-\alpha)(l_{t-1} + b_{t-1}) \\
+\text{Trend equation} \; b_t = \beta^*(l_t - l_{t-1}) + (1-\beta^*)b_{t-1} \\
+\text{Seasonality}\; : s_t = \gamma(y_t - l_{t-1} - b_{t-1}) + (1-\gamma)s_{t-m}\\
+\;\\
+\text{where} \\
+\;\; \text{$k$ is the integer part of $\frac{h-1}{m}$}\\
+\;\; l_t :\text{Level at time $t$} \\
+\;\; b_t :\text{Trend at time $t$} \\
+\;\; \alpha : \text{Smoothing parameter for Level} \\
+\;\; \beta^* : \text{Smoothing parameter for Trend} 
+$$
+
+#### Holt-Winters' multiplicative method
+
+$$
+\hat{y}_{t+h|t} = (l_t + h b_t)s_{t+h-m(k+1)}\\
+l_t = \alpha(\frac{y_t}{s_{t-m}}) + (1-\alpha)(l_{t-1} + b_{t-1}) \\
+b_t = \beta^*(l_t - l_{t-1}) + (1-\beta^*)b_{t-1} \\
+s_t = \gamma(\frac{y_t}{l_{t-1} - b_{t-1}}) + (1-\gamma)s_{t-m}\\
+$$
+
+#### Example: Domestic overnight trips in Australia
+
+```{r}
+aus_holidays <- tourism %>%
+  filter(Purpose == "Holiday") %>%
+  summarise(Trips = sum(Trips)/1e3)
+
+fit <- aus_holidays %>%
+  model(
+    additive = ETS(Trips ~ error("A") + trend("A") +
+                                                season("A")),
+    multiplicative = ETS(Trips ~ error("M") + trend("A") +
+                                                season("M"))
+  )
+
+fc <- fit %>% forecast(h = "3 years")
+
+fc %>%
+  autoplot(aus_holidays, level = NULL) +
+  labs(title="Australian domestic tourism",
+       y="Overnight trips (millions)") +
+  guides(colour = guide_legend(title = "Forecast"))
+```
+
+#### Holt-Winters' damped method
+
+(omit)
+
+#### Example: Holt-Winters method with daily data
+
+```{r}
+sth_cross_ped <- pedestrian %>%
+  filter(Date >= "2016-07-01",
+         Sensor == "Southern Cross Station") %>%
+  index_by(Date) %>%
+  summarise(Count = sum(Count)/1000)
+
+sth_cross_ped %>%
+  filter(Date <= "2016-07-31") %>%
+  model(
+    hw = ETS(Count ~ error("M") + trend("Ad") + season("M"))
+  ) %>%
+  forecast(h = "2 weeks") %>%
+  autoplot(sth_cross_ped %>% filter(Date <= "2016-08-14")) +
+  labs(title = "Daily traffic: Southern Cross",
+       y="Pedestrians ('000)")
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```

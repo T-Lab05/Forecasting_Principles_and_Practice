@@ -1,0 +1,192 @@
+---
+title: "5.8 Evaluating point forecast accuracy"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#### Training and test sets
+
+#### Functions to subset a time series
+
+```{r}
+# Unique year contained original series
+unique(year(aus_production$Quarter))
+```
+
+
+
+```{r}
+# filter data since 1995 by filter function
+aus_production %>%
+  filter(year(Quarter) >= 1995) %>%
+  pull(Quarter) %>%
+  year()
+
+```
+
+
+```{r}
+# filter data since 1995 Q1 by filter_index function
+aus_production %>%
+  filter_index("1995 Q1" ~ .) %>%
+  pull(Quarter)
+```
+
+
+```{r}
+# Extract the las 20 obs by slice function
+aus_production %>%
+  slice(n()-19:0)
+```
+
+
+```{r}
+# Subset observations from groups
+aus_retail %>%
+  group_by(State, Industry) %>%
+  slice(1:12)
+```
+
+#### Forecast errors
+
+$$
+e_{T+h} = y_{T+h} - \hat{y}_{T+h|T}
+$$
+
+
+- Residual
+  - Calculated on training set
+  - one-step forecast
+- Forecast errors
+  - Calculated on test set
+  - Involve multi-step forecast
+
+
+#### Scale-dependent errors
+- Can not be used to compare series with different scales
+
+- MAE: Mean Absolute Error
+  - $ MAE = mean(|e_t|)$
+- RMSE: Root Mean Squared error
+  - $ RMSE = \sqrt{mean(e_t^2)}$
+
+- Minimising the MAE will lead to forecasts of **the median**
+- Minimising the RMSE will lead to forecasts of **the mean**
+- Consequently, the RMSE is also widely used, despite being more difficult to interpret.
+
+
+#### Percentage errors
+
+- MAPE: Mean absolute percentage error
+  - $ MAPE = mean(|p_t|),\, p_t = 100 * \frac{e_t}{y_t} $
+  - Disadvantage
+    - $p_t$ is infinite or undefined if $y_t$ = 0
+    - $p_t$ takes extreme values if $y_t$ is close to zero
+    - ex) temperatures can take 0 and negative values
+- sMAPE: symmetric MAPE
+  - $ sMAPE = mean(200*|y_t - \hat{y_t}|/(y_t + \hat{y_t})) $
+  
+  
+#### Scaled errors
+- Can compare series with diffrent time series
+- Overcome the disadvantage of MAPE and sMAPE
+- scaled error for non-seasonal time series 
+$$
+q_j = \frac{e_j}{\frac{1}{T-1}\sum^{T}_{t=2}|y_t-y_{t-1}|}
+$$
+- scaled error for seasonal time series 
+  - m is the seasonal period
+
+$$
+q_j = \frac{e_j}{\frac{1}{T-m}\sum^{T}_{t=m+1}|y_t-y_{t-m}|}
+$$
+
+- MASE: Mean Absolute Scaled Error
+  - $ MASE = mean(|q_j|) $
+- RMSSE: Root Mean Squared Scaled Error
+  - $ RMSSE = \sqrt{mean(q_j^2)}$
+  - $ q_j = \frac{e_j}{\frac{1}{T-m}\sum^{T}_{t=m+1}(y_t-y_{t-m})^2}$
+  - set m = 1 if non-sesonal time series
+
+#### Example
+
+```{r}
+recent_production <- aus_production %>%
+  filter(year(Quarter) >= 1992)
+beer_train <- recent_production %>%
+  filter(year(Quarter) <= 2007)
+
+beer_fit <- beer_train %>%
+  model(
+    Mean = MEAN(Beer),
+    `Naïve` = NAIVE(Beer),
+    `Seasonal naïve` = SNAIVE(Beer),
+    Drift = RW(Beer ~ drift())
+  )
+
+beer_fc <- beer_fit %>%
+  forecast(h = 10)
+
+beer_fc %>%
+  autoplot(
+    aus_production %>% filter(year(Quarter) >= 1992),
+    level = NULL
+  ) +
+  labs(
+    y = "Megalitres",
+    title = "Forecasts for quarterly beer production"
+  ) +
+  guides(colour = guide_legend(title = "Forecast"))
+
+```
+```{r}
+accuracy(beer_fc, recent_production)
+```
+<<<<<<< HEAD
+```{r}
+# Re-index based on trading days
+google_stock <- gafa_stock %>%
+  filter(Symbol == "GOOG", year(Date) >= 2015) %>%
+  mutate(day = row_number()) %>%
+  update_tsibble(index = day, regular = TRUE)
+# Filter the year of interest
+google_2015 <- google_stock %>% filter(year(Date) == 2015)
+# Fit the models
+google_fit <- google_2015 %>%
+  model(
+    Mean = MEAN(Close),
+    `Naïve` = NAIVE(Close),
+    Drift = NAIVE(Close ~ drift())
+  )
+# Produce forecasts for the trading days in January 2016
+google_jan_2016 <- google_stock %>%
+  filter(yearmonth(Date) == yearmonth("2016 Jan"))
+google_fc <- google_fit %>%
+  forecast(new_data = google_jan_2016)
+```
+
+
+```{r}
+google_fit <- google_2015 %>%
+  model(
+    Mean = MEAN(Close),
+    `Naïve` = NAIVE(Close),
+    Drift = RW(Close ~ drift())
+  )
+
+google_fc <- google_fit %>%
+  forecast(google_jan_2016)
+
+google_fc %>%
+  autoplot(bind_rows(google_2015, google_jan_2016),
+    level = NULL) +
+  labs(y = "$US",
+       title = "Google closing stock prices from Jan 2015") +
+  guides(colour = guide_legend(title = "Forecast"))
+
+```

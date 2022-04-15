@@ -13,7 +13,18 @@ library(fpp3)
 ```
 
 #### Example: Forecasting Google daily closing stock prices
- 
+
+```{r}
+# Re-index based on trading days
+google_stock <- gafa_stock %>%
+  filter(Symbol == "GOOG", year(Date) >= 2015) %>%
+  mutate(day = row_number()) %>%
+  update_tsibble(index = day, regular = TRUE)
+
+# Filter the year of interest
+google_2015 <- google_stock %>% filter(year(Date) == 2015)
+```
+
 ```{r}
 autoplot(google_2015, Close) +
   labs(y = "$US",

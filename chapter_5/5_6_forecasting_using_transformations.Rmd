@@ -1,0 +1,60 @@
+---
+title: "5.5 Distributional forecasts and prediction intervals"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fpp3)
+```
+
+
+#### Prediction intervals with transformations
+
+#### Bias adjustments
+
+```{r}
+head(prices)
+```
+
+
+```{r}
+prices %>%
+  filter(!is.na(eggs)) %>%
+  ggplot() +
+  geom_line(aes(x = year, y = eggs)) + 
+  labs(title = "Original Series")
+```
+
+```{r}
+# Parameter for Box-Cox transformation
+lamda = 0
+
+prices %>%
+  filter(!is.na(eggs)) %>%
+  mutate(eggs_log = box_cox(eggs, lamda)) %>%
+  ggplot() +
+  geom_line(aes(x = year, y = eggs_log)) +
+  labs(title = "Transformed Series by Box-Cox",
+       subtitle = "lamda = 0")
+
+```
+
+
+```{r}
+prices %>%
+  filter(!is.na(eggs)) %>%
+  model(RW(log(eggs) ~ drift())) %>%
+  forecast(h = 50) %>%
+  autoplot(prices %>% filter(!is.na(eggs)),
+    level = 80, point_forecast = lst(mean, median)
+  ) +
+  labs(title = "Annual egg prices",
+       y = "$US (in cents adjusted for inflation) ")
+```
+
+#### 

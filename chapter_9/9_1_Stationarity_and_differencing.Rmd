@@ -1,0 +1,64 @@
+---
+title: "9.1 Stationarity and differencing"
+output: html_document
+date: '2022-04-07'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fpp3)
+```
+
+#### Differencing
+
+```{r, warning=F}
+google_2015 <- gafa_stock %>%
+  filter(Symbol == "GOOG", year(Date) == 2015) 
+
+google_2015 %>% ACF(Close) %>% 
+  autoplot() + labs(subtitle = "ACF of Google closing stock price")
+
+google_2015 %>% ACF(difference(Close)) %>% 
+  autoplot() + labs(subtitle = "ACF of Changes in Google closing stock price")
+```
+
+```{r}
+google_2015 %>%
+  mutate(diff_close = difference(Close)) %>%
+  features(diff_close, ljung_box, lag = 10)
+```
+
+#### Random walk model
+
+-   long periods of apparent trends up and down
+
+-   sudden and unpredictable changes in direction
+
+$$
+y_t = y_{t-1} + \varepsilon_t \\
+\text{where $\;\;$ $\epsilon$ ~ W.N(0,$\sigma^2$)}
+$$
+
+-   Random walk model with the trend being a non-zero mean
+
+$$
+y_t = c + y_{t-1} + \varepsilon_t \\
+\text{where $\;\;$ $\epsilon$ ~ W.N(0,$\sigma^2$)} \\
+\text{c is the average of the changes between consecutive observations}
+$$
+
+#### Second-order differencing
+
+#### Seasonal differencing
+
+$$
+y'_t = y_t - y_{t-m} \\
+\text{where $m$ is the seasonal period}
+$$
+
+#### Unit root tests
+
+-   Statistical hypothesis test for stationarity
